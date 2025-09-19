@@ -159,6 +159,15 @@ pstatus_t photorec_find_blocksize(struct ph_param *params, const struct ph_optio
       if(file_recovery.data_check!=NULL)
 	res=file_recovery.data_check(buffer_olddata, 2*blocksize, &file_recovery);
       file_recovery.file_size+=blocksize;
+      /* Check global file size limit from /maxsize parameter for early termination */
+      if(res!=DC_STOP && res!=DC_ERROR && params->max_file_size > 0 && file_recovery.file_size > params->max_file_size)
+      {
+	res=DC_STOP;
+#ifndef DISABLED_FOR_FRAMAC
+	log_verbose("File size limit reached (%llu), stopping recovery early\n",
+	    (long long unsigned)params->max_file_size);
+#endif
+      }
       if(res==DC_STOP || res==DC_ERROR)
       {
 	/* EOF found */

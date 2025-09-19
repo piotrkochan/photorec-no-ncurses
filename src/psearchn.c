@@ -217,6 +217,15 @@ pstatus_t photorec_aux(struct ph_param *params, const struct ph_options *options
 	  else
 	    data_check_status=DC_CONTINUE;
 	  file_recovery.file_size+=blocksize;
+	  /* Check global file size limit from /maxsize parameter for early termination */
+	  if(data_check_status!=DC_STOP && data_check_status!=DC_ERROR && params->max_file_size > 0 && file_recovery.file_size > params->max_file_size)
+	  {
+	    data_check_status=DC_STOP;
+#ifndef DISABLED_FOR_FRAMAC
+	    log_verbose("File size limit reached (%llu), stopping recovery early\n",
+		(long long unsigned)params->max_file_size);
+#endif
+	  }
 #ifndef DISABLED_FOR_FRAMAC
 	  if(data_check_status==DC_STOP)
 	  {
