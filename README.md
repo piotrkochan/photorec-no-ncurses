@@ -20,7 +20,7 @@ A specialized distribution of PhotoRec 7.3-WIP engineered for headless environme
 
 ## Session and Signature Management
 - Added `/sig FILE` parameter for custom signature file path specification
-- Implemented `/ses FILE` parameter for custom session file location control
+- Implemented `/sess FILE` parameter for custom session file location control
 - Introduced `/nosess` flag to disable session file support and resume capability
 
 ## File Size Filtering Enhancement
@@ -54,10 +54,10 @@ ldd src/photorec | grep ncurses  # Should return empty
 | `/cmd DEVICE ACTION` | Device and action | `/cmd /dev/sda1 search` |
 | `/debug` | Add debug information | `/debug` |
 | `/sig FILE` | Custom signature file path | `/sig /path/to/signatures.txt` |
-| `/ses FILE` | Custom session file path | `/ses /path/to/session.ses` |
+| `/sess FILE` | Custom session file path | `/sess /path/to/session.ses` |
 | `/nosess` | Disable session file support (no resume capability) | `/nosess` |
 
-## 🎯 Size Format Support
+## Size Format Support
 
 The `/maxsize` parameter supports the following suffixes:
 - `K` or `k`: Kilobytes (1024 bytes)
@@ -66,7 +66,7 @@ The `/maxsize` parameter supports the following suffixes:
 - `T` or `t`: Terabytes (1024⁴ bytes)
 - No suffix: Bytes
 
-## 📝 JSON Logging Format
+## JSON Logging Format
 
 The modified PhotoRec outputs structured JSON logs with the following message types:
 

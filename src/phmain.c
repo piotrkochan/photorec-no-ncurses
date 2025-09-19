@@ -169,18 +169,36 @@ static uint64_t parse_size_string(const char* size_str)
 static void display_help(void)
 {
   printf("\nUsage: photorec [/log] [/debug] [/d recup_dir] [/maxsize SIZE] [file.dd|file.e01|device]\n"\
+      "       photorec /cmd DEVICE ACTION\n" \
       "       photorec /version\n" \
       "\n" \
-      "/log          : create a photorec.log file\n" \
-      "/debug        : add debug information\n" \
-      "/maxsize SIZE : maximum file size to recover (e.g., 100M, 2G)\n" \
-      "/sig FILE     : custom signature file path\n" \
-      "/ses FILE     : custom session file path\n" \
-      "/nosess       : disable session file support (no resume capability)\n" \
-      "/logjson FILE : enable JSON logging to specified file\n" \
+      "Options:\n" \
+      "/log           : create a photorec.log file\n" \
+      "/logname FILE  : specify log filename\n" \
+      "/nolog         : disable logging\n" \
+      "/debug         : add debug information\n" \
+      "/d DIR         : recovery directory (default: recup_dir)\n" \
+      "/maxsize SIZE  : maximum file size to recover (e.g., 100M, 2G)\n" \
+      "/sig FILE      : custom signature file path\n" \
+      "/sess FILE     : custom session file path\n" \
+      "/nosess        : disable session file support (no resume capability)\n" \
+      "/logjson FILE  : enable JSON logging to specified file\n" \
+      "/all           : show all partitions\n" \
+      "/direct        : use direct I/O\n" \
+      "/nosetlocale   : disable locale setting\n" \
+      "/cmd DEVICE ACTION : non-interactive mode (e.g., /cmd /dev/sda1 search)\n" \
+      "/cmd resume        : resume previous session automatically\n" \
+      "/help, /h, /?  : display this help\n" \
+      "/version, /v   : display version information\n" \
       "\n" \
       "PhotoRec searches for various file formats (JPEG, Office...). It stores files\n" \
-      "in the recup_dir directory.\n");
+      "in the recup_dir directory.\n" \
+      "\n" \
+      "Examples:\n" \
+      "  photorec /log /d recovered /maxsize 100M /dev/sda1\n" \
+      "  photorec /logjson recovery.json /cmd /dev/sda1 search\n" \
+      "  photorec /cmd resume\n" \
+      "  photorec /nosess /cmd disk.img search\n");
 }
 
 #ifndef DISABLED_FOR_FRAMAC
@@ -337,7 +355,7 @@ int main( int argc, char **argv )
       params.sig_file = strdup(argv[i+1]);
       i++;
     }
-    else if(i+1<argc && ((strcmp(argv[i],"/ses")==0)||(strcmp(argv[i],"-ses")==0)))
+    else if(i+1<argc && ((strcmp(argv[i],"/sess")==0)||(strcmp(argv[i],"-sess")==0)))
     {
       params.session_file = strdup(argv[i+1]);
       i++;
