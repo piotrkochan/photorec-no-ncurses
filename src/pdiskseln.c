@@ -251,6 +251,7 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
   };
   const int resume_session=(params->cmd_device!=NULL && strcmp(params->cmd_device,"resume")==0);
 
+
   /* Log JSON session start if enabled */
   json_log_session_start(params, options);
 #ifndef DISABLED_FOR_FRAMAC
@@ -259,25 +260,8 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
     char *saved_device=NULL;
     char *saved_cmd=NULL;
     session_load(&saved_device, &saved_cmd,&list_search_space, params);
-    if(saved_device!=NULL && saved_cmd!=NULL && !td_list_empty(&list_search_space.list)
-#if defined(HAVE_NCURSES)
-	&& ( resume_session!=0 || ask_confirmation("Continue previous session ? (Y/N)")!=0)
-#endif
-      )
+    if(saved_device!=NULL && saved_cmd!=NULL && !td_list_empty(&list_search_space.list) && resume_session!=0)
     {
-#if defined(HAVE_NCURSES)
-      {
-	WINDOW *window=newwin(LINES, COLS, 0, 0);	/* full screen */
-	aff_copy(window);
-	mvwaddstr(window,5,0,"Resuming the recovery. Please wait...");
-	wrefresh(window);
-	delwin(window);
-	(void) clearok(stdscr, TRUE);
-#ifdef HAVE_TOUCHWIN
-	touchwin(stdscr);
-#endif
-      }
-#endif
       params->cmd_run=saved_cmd;
       params->cmd_device=saved_device;
     }
@@ -300,21 +284,6 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
       json_log_partition_info(params->disk);
       json_log_disk_info(params->disk);
     }
-#if defined(HAVE_NCURSES)
-    if(params->disk==NULL)
-    {
-      log_critical("No disk found\n");
-      return intrf_no_disk_ncurses("PhotoRec");
-    }
-    /*@ assert valid_disk(params->disk); */
-    if(change_arch_type_cli(params->disk, options->verbose, &params->cmd_run)==0 ||
-	change_arch_type_ncurses(params->disk, options->verbose)==0)
-    {
-      autoset_unit(params->disk);
-      menu_photorec(params, options, &list_search_space);
-    }
-    return 0;
-#else
     if(params->disk==NULL)
     {
       log_critical("No disk found\n");
@@ -327,19 +296,9 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
     menu_photorec(params, options, &list_search_space);
     /*@ assert params->cmd_run == \null || valid_read_string(params->cmd_run); */
     return 0;
-#endif
   }
   /*@ assert params->cmd_run == \null || valid_read_string(params->cmd_run); */
-#if defined(HAVE_NCURSES)
-  {
-    int result = photorec_disk_selection_ncurses(params, options, list_disk, &list_search_space);
-    /* Log JSON session end if enabled */
-    json_log_session_end(params->file_stats);
-    return result;
-  }
-#else
   /* Log JSON session end if enabled */
   json_log_session_end(params->file_stats);
   return 0;
-#endif
 }

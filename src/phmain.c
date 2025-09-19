@@ -465,30 +465,6 @@ int main( int argc, char **argv )
 #endif
   if(create_log!=TD_LOG_NONE && log_opened==0)
     log_opened=log_open_default(logfile, create_log, &log_errno);
-#ifdef HAVE_NCURSES
-  /* ncurses need locale for correct unicode support */
-  if(start_ncurses("PhotoRec", argv[0]))
-  {
-    free(params.recup_dir);
-    log_close();
-    return 1;
-  }
-  {
-    const char*filename=logfile;
-    while(create_log!=TD_LOG_NONE && log_opened==0)
-    {
-      filename=ask_log_location(filename, log_errno);
-      if(filename!=NULL)
-	log_opened=log_open(filename, create_log, &log_errno);
-      else
-	create_log=TD_LOG_NONE;
-    }
-  }
-  aff_copy(stdscr);
-  wmove(stdscr,5,0);
-  wprintw(stdscr, "Disk identification, please wait...\n");
-  wrefresh(stdscr);
-#endif
   {
     time_t my_time;
     my_time=time(NULL);
@@ -565,18 +541,24 @@ int main( int argc, char **argv )
     params.cmd_run = "search"; /* Default to search if not specified */
   }
 
+  /* Call main PhotoRec function directly */
+  do_curses_photorec(&params, &options, list_disk);
+
 #ifdef SUDO_BIN
   if(list_disk==NULL && geteuid()!=0)
   {
       use_sudo=2;
   }
-  if(use_sudo==0)
-    use_sudo=do_curses_photorec(&params, &options, list_disk);
-#else
-  do_curses_photorec(&params, &options, list_disk);
-#endif
-#ifdef HAVE_NCURSES
-  end_ncurses();
+  if(use_sudo>0)
+  {
+    printf("\n");
+    if(use_sudo>1)
+      printf("No disk found.\n");
+    printf("PhotoRec will try to restart itself using the sudo command to get\n");
+    printf("root (superuser) privileges.\n");
+    printf("\n");
+    run_sudo(argc, argv, create_log);
+  }
 #endif
 #ifndef DISABLED_FOR_FRAMAC
   if(options.verbose > 0)
