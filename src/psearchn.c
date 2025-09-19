@@ -63,6 +63,7 @@
 #include "photorec.h"
 #include "sessionp.h"
 #include "log.h"
+#include "json_log.h"
 #include "file_tar.h"
 #include "pnext.h"
 #include "file_found.h"
@@ -133,6 +134,10 @@ pstatus_t photorec_aux(struct ph_param *params, const struct ph_options *options
 #endif
   params->disk->pread(params->disk, buffer, READ_SIZE, offset);
   header_ignored(NULL);
+
+  /* Variables for JSON progress logging */
+  time_t last_json_log_time = time(NULL);
+
 #ifndef DISABLED_FOR_FRAMAC
   /*@ loop invariant valid_file_recovery(&file_recovery); */
   while(current_search_space!=list_search_space)
@@ -347,6 +352,22 @@ pstatus_t photorec_aux(struct ph_param *params, const struct ph_options *options
         const time_t current_time=time(NULL);
         if(current_time>previous_time)
         {
+          /* Log JSON progress every second */
+          if(current_time > last_json_log_time)
+          {
+            char elapsed_str[64];
+            const time_t elapsed = current_time - params->real_start_time;
+            snprintf(elapsed_str, sizeof(elapsed_str), "%uh%02um%02us",
+                    (unsigned)(elapsed/3600),
+                    (unsigned)((elapsed/60)%60),
+                    (unsigned)(elapsed%60));
+
+            uint64_t current_sector = (offset-params->partition->part_offset)/params->disk->sector_size;
+            uint64_t total_sectors = (params->partition->part_size-1)/params->disk->sector_size;
+
+            json_log_recovery_progress(params, current_sector, total_sectors, elapsed_str, NULL, params->file_stats);
+            last_json_log_time = current_time;
+          }
           previous_time=current_time;
 #ifdef HAVE_NCURSES
           ind_stop=photorec_progressbar(stdscr, params->pass, params, offset, current_time);

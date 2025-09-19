@@ -45,6 +45,7 @@
 #include "common.h"
 #include "filegen.h"
 #include "log.h"
+#include "json_log.h"
 
 static int file_check_cmp(const struct td_list_head *a, const struct td_list_head *b);
 

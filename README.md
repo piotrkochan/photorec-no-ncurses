@@ -1,3 +1,129 @@
+# PhotoRec 7.3-WIP - Non-Interactive Distribution
+
+A specialized distribution of PhotoRec 7.3-WIP engineered for headless environments and automated workflows. This version eliminates ncurses dependencies while introducing enhanced command-line functionality and structured logging capabilities.
+
+## Key Features
+
+- **No UI Dependencies**: Completely removed ncurses/curses dependencies
+- **Size Filtering**: Skip files larger than specified size (supports K/M/G/T suffixes)
+- **JSON Output**: Clean, structured logging for automated processing
+- **Custom File Paths**: Configurable signature and session file paths with optional session disable
+- **Backward Compatible**: Maintains existing `/cmd` parameter functionality
+
+## NCurses Dependency Removal
+- Maintains full compatibility with existing PhotoRec core functionality
+
+## Structured Logging Framework
+- Developed JSON-based logging system for integration with monitoring and analysis tools
+- Implemented standardized event logging for session lifecycle, partition discovery, recovery progress, and file operations
+- Replaced terminal control sequences with machine-readable output format
+
+## Session and Signature Management
+- Added `/sig FILE` parameter for custom signature file path specification
+- Implemented `/ses FILE` parameter for custom session file location control
+- Introduced `/nosess` flag to disable session file support and resume capability
+
+## File Size Filtering Enhancement
+- Implemented configurable maximum file size constraints via `/maxsize` parameter
+
+# 🔧 Build Instructions
+
+```bash
+# Regenerate autotools configuration
+autoreconf -fiv
+
+# Configure without ncurses
+./configure --without-ncurses --enable-silent-rules
+
+# Compile with parallel jobs
+make -j10
+
+# Verify no ncurses dependency
+ldd src/photorec | grep ncurses  # Should return empty
+```
+
+## Parameter Reference
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `/maxsize SIZE` | Maximum file size to recover | `/maxsize 100M`, `/maxsize 2G` |
+| `/log` | Create log file | `/log` |
+| `/logname FILE` | Specify log filename | `/logname recovery.log` |
+| `/logjson FILE` | Enable JSON logging to specified file | `/logjson recovery.json` |
+| `/d DIR` | Recovery directory | `/d recovered_files` |
+| `/cmd DEVICE ACTION` | Device and action | `/cmd /dev/sda1 search` |
+| `/debug` | Add debug information | `/debug` |
+| `/sig FILE` | Custom signature file path | `/sig /path/to/signatures.txt` |
+| `/ses FILE` | Custom session file path | `/ses /path/to/session.ses` |
+| `/nosess` | Disable session file support (no resume capability) | `/nosess` |
+
+## 🎯 Size Format Support
+
+The `/maxsize` parameter supports the following suffixes:
+- `K` or `k`: Kilobytes (1024 bytes)
+- `M` or `m`: Megabytes (1024² bytes)
+- `G` or `g`: Gigabytes (1024³ bytes)
+- `T` or `t`: Terabytes (1024⁴ bytes)
+- No suffix: Bytes
+
+## 📝 JSON Logging Format
+
+The modified PhotoRec outputs structured JSON logs with the following message types:
+
+### Session Start
+```json
+{
+  "type": "session_start",
+  "timestamp": "2025-09-19T10:30:00Z",
+  "photorec_version": "7.3-WIP",
+  "recovery_directory": "/path/to/recovery",
+  "max_file_size": 104857600,
+  "paranoid_mode": true,
+  "keep_corrupted_files": false
+}
+```
+
+### Recovery Progress
+```json
+{
+  "type": "recovery_progress",
+  "timestamp": "2025-09-19T10:30:05Z",
+  "pass": 1,
+  "current_sector": 1690894,
+  "total_sectors": 8391537,
+  "elapsed_time": "0h00m05s",
+  "estimated_completion": "0h00m19s",
+  "files_found": {
+    "txt": 347,
+    "cab": 5,
+    "exe": 4,
+    "bmp": 1,
+    "total": 357
+  }
+}
+```
+
+### File Recovered
+```json
+{
+  "type": "file_recovered",
+  "timestamp": "2025-09-19T10:30:06Z",
+  "filename": "f0001234.jpg",
+  "filetype": "jpg",
+  "filesize": 2048576,
+  "disk_offset": 123456789
+}
+```
+
+## Important Notes
+
+- **Non-Interactive Only**: This version requires the `/cmd` parameter and will not start any interactive interface
+- **No Menu System**: All file type selection and options must be specified via command line
+- **JSON Output**: When using `/log`, the output format is structured JSON instead of the original text format
+- **Size Filtering**: Files exceeding the `/maxsize` limit are automatically skipped during recovery
+
+Below original readme:
+
 **TestDisk** checks the partition and boot sectors of your disks.
 It is very useful in recovering lost partitions.
 
@@ -36,12 +162,3 @@ TestDisk and PhotoRec run on:
 - SunOS
 
 Both are licensed under the GNU General Public License.
-
-See the [latest documentation](https://github.com/cgsecurity/testdisk_documentation)
-To build from source, read [INSTALL](INSTALL).
-
-Christophe GRENIER
-[grenier@cgsecurity.org](mailto:grenier@cgsecurity.org)
-[https://www.cgsecurity.org/](https://www.cgsecurity.org/)
-
-[![Build Status](https://travis-ci.org/cgsecurity/testdisk.svg?branch=master)](https://travis-ci.org/cgsecurity/testdisk)

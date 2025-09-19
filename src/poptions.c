@@ -32,6 +32,7 @@
 #include "filegen.h"
 #include "photorec.h"
 #include "log.h"
+#include "json_log.h"
 #include "poptions.h"
 
 void interface_options_photorec_cli(struct ph_options *options, char **current_cmd)
@@ -108,4 +109,6 @@ void interface_options_photorec_log(const struct ph_options *options)
       options->mode_ext2?"Yes":"No",
       options->expert?"Yes":"No",
       options->lowmem?"Yes":"No");
+  /* Log options to JSON as well */
+  json_log_options_info(options);
 }

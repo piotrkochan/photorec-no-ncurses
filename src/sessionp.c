@@ -56,10 +56,33 @@
 #define SESSION_MAXSIZE 40960
 #define SESSION_FILENAME "photorec.ses"
 
+/* Global variable for custom session file path */
+static char *custom_session_file = NULL;
+
+/* Function to set custom session file path */
+void set_custom_session_file(const char *session_file)
+{
+  if(custom_session_file != NULL)
+  {
+    free(custom_session_file);
+    custom_session_file = NULL;
+  }
+  if(session_file != NULL)
+  {
+    custom_session_file = strdup(session_file);
+  }
+}
+
+/* Function to get session filename */
+static const char* get_session_filename(void)
+{
+  return (custom_session_file != NULL) ? custom_session_file : SESSION_FILENAME;
+}
+
 static int session_save_empty(void)
 {
   FILE *f_session;
-  f_session=fopen(SESSION_FILENAME,"wb");
+  f_session=fopen(get_session_filename(),"wb");
   if(!f_session)
   {
 #ifndef DISABLED_FOR_FRAMAC
@@ -84,19 +107,23 @@ static int session_save_empty(void)
   return 0;
 }
 
-int session_load(char **cmd_device, char **current_cmd, alloc_data_t *list_free_space)
+int session_load(char **cmd_device, char **current_cmd, alloc_data_t *list_free_space, const struct ph_param *params)
 {
   FILE *f_session;
   char *buffer;
   char *pos;
   int taille;
+
+  /* Check if session support is disabled */
+  if(params && params->disable_session)
+    return -1;
   struct stat stat_rec;
   unsigned int buffer_size;
 //  time_t my_time;
   char *info=NULL;
   *cmd_device=NULL;
   *current_cmd=NULL;
-  f_session=fopen(SESSION_FILENAME,"rb");
+  f_session=fopen(get_session_filename(),"rb");
   if(!f_session)
   {
     log_info("Can't open photorec.ses file: %s\n",strerror(errno));
@@ -202,7 +229,10 @@ int session_save(const alloc_data_t *list_free_space, const struct ph_param *par
   FILE *f_session;
   if(params->status==STATUS_QUIT)
     return 0;
-  f_session=fopen(SESSION_FILENAME,"wb");
+  /* Check if session support is disabled */
+  if(params->disable_session)
+    return 0;
+  f_session=fopen(get_session_filename(),"wb");
   if(!f_session)
   {
 #ifndef DISABLED_FOR_FRAMAC
@@ -375,7 +405,8 @@ time_t regular_session_save(alloc_data_t *list_free_space, struct ph_param *para
 {
   time_t new_time;
   /* Save current progress */
-  session_save(list_free_space, params, options);
+  if(!params->disable_session)
+    session_save(list_free_space, params, options);
   new_time=time(NULL);
   /* If it takes more then 30s to save the session, save every 15 minutes instead of every 5 minutes */
   return new_time+(current_time+30<new_time?15:5)*60;

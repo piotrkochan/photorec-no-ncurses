@@ -123,6 +123,23 @@ const file_hint_t file_hint_sig= {
 #define DOT_PHOTOREC_SIG "/.photorec.sig"
 #define PHOTOREC_SIG "photorec.sig"
 
+/* Global variable for custom signature file path */
+static char *custom_sig_file = NULL;
+
+/* Function to set custom signature file path */
+void set_custom_signature_file(const char *sig_file)
+{
+  if(custom_sig_file != NULL)
+  {
+    free(custom_sig_file);
+    custom_sig_file = NULL;
+  }
+  if(sig_file != NULL)
+  {
+    custom_sig_file = strdup(sig_file);
+  }
+}
+
 typedef struct signature_s signature_t;
 struct signature_s
 {
@@ -261,6 +278,25 @@ static int header_check_sig(const unsigned char *buffer, const unsigned int buff
 
 static FILE *open_signature_file(void)
 {
+  /* Check custom signature file path first */
+  if(custom_sig_file != NULL)
+  {
+    FILE *handle = fopen(custom_sig_file, "rb");
+    if(handle != NULL)
+    {
+#ifndef DISABLED_FOR_FRAMAC
+      log_info("Open custom signature file %s\n", custom_sig_file);
+#endif
+      return handle;
+    }
+    else
+    {
+#ifndef DISABLED_FOR_FRAMAC
+      log_warning("Cannot open custom signature file %s\n", custom_sig_file);
+#endif
+    }
+  }
+
 #if defined(__CYGWIN__) || defined(__MINGW32__)
   {
     char *path;

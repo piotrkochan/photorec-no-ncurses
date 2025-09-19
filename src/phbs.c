@@ -52,6 +52,7 @@
 #include "phnc.h"
 #include "phbs.h"
 #include "file_found.h"
+#include "json_log.h"
 
 #define READ_SIZE 1024*512
 
@@ -98,6 +99,9 @@ pstatus_t photorec_find_blocksize(struct ph_param *params, const struct ph_optio
   start_time=time(NULL);
   previous_time=start_time;
   memset(buffer_olddata, 0, blocksize);
+
+  /* Variables for JSON progress logging */
+  time_t last_json_log_time = time(NULL);
   current_search_space=td_list_first_entry(&list_search_space->list, alloc_data_t, list);
   if(current_search_space!=list_search_space)
     offset=current_search_space->start;
@@ -201,21 +205,38 @@ pstatus_t photorec_find_blocksize(struct ph_param *params, const struct ph_optio
 	    (unsigned long)((offset - params->partition->part_offset) / params->disk->sector_size));
 #endif
       }
-#ifdef HAVE_NCURSES
       {
         time_t current_time;
         current_time=time(NULL);
         if(current_time>previous_time)
         {
+          /* Log JSON progress every second during blocksize finding */
+          if(current_time > last_json_log_time)
+          {
+            char elapsed_str[64];
+            const time_t elapsed = current_time - start_time;
+            snprintf(elapsed_str, sizeof(elapsed_str), "%uh%02um%02us",
+                    (unsigned)(elapsed/3600),
+                    (unsigned)((elapsed/60)%60),
+                    (unsigned)(elapsed%60));
+
+            uint64_t current_sector = (offset-params->partition->part_offset)/params->disk->sector_size;
+            uint64_t total_sectors = (params->partition->part_size-1)/params->disk->sector_size;
+
+            json_log_recovery_progress(params, current_sector, total_sectors, elapsed_str, NULL, params->file_stats);
+            last_json_log_time = current_time;
+          }
+
           previous_time=current_time;
+#ifdef HAVE_NCURSES
           if(photorec_progressbar(stdscr, 0, params, offset, current_time))
 	  {
 	    log_info("PhotoRec has been stopped\n");
 	    current_search_space=list_search_space;
 	  }
+#endif
 	}
       }
-#endif
       if(need_to_stop!=0)
       {
 	log_info("PhotoRec has been stopped\n");

@@ -48,6 +48,7 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
+#include <ctype.h>
 #ifdef HAVE_TIME_H
 #include <time.h>
 #endif
@@ -76,6 +77,8 @@
 #include "dir.h"
 #include "filegen.h"
 #include "photorec.h"
+#include "photorec_check_header.h"
+#include "sessionp.h"
 #include "hdcache.h"
 #include "ewf.h"
 #include "log.h"
@@ -84,6 +87,7 @@
 #include "phcfg.h"
 #include "misc.h"
 #include "ext2_dir.h"
+#include "json_log.h"
 #include "file_jpg.h"
 #include "file_gz.h"
 #include "ntfs_dir.h"
@@ -121,13 +125,59 @@ static void sighup_hdlr(int sig)
 }
 #endif
 
+/* Parse size string like "100M", "2G", "500K" into bytes */
+static uint64_t parse_size_string(const char* size_str)
+{
+  uint64_t size = 0;
+  char *endptr;
+  double value;
+
+  if (size_str == NULL || *size_str == '\0')
+    return 0;
+
+  value = strtod(size_str, &endptr);
+
+  if (value < 0)
+    return 0;
+
+  switch (toupper(*endptr))
+  {
+    case 'K':
+      size = (uint64_t)(value * 1024);
+      break;
+    case 'M':
+      size = (uint64_t)(value * 1024 * 1024);
+      break;
+    case 'G':
+      size = (uint64_t)(value * 1024 * 1024 * 1024);
+      break;
+    case 'T':
+      size = (uint64_t)(value * 1024ULL * 1024ULL * 1024ULL * 1024ULL);
+      break;
+    case '\0':
+      /* No suffix, assume bytes */
+      size = (uint64_t)value;
+      break;
+    default:
+      /* Invalid suffix */
+      return 0;
+  }
+
+  return size;
+}
+
 static void display_help(void)
 {
-  printf("\nUsage: photorec [/log] [/debug] [/d recup_dir] [file.dd|file.e01|device]\n"\
+  printf("\nUsage: photorec [/log] [/debug] [/d recup_dir] [/maxsize SIZE] [file.dd|file.e01|device]\n"\
       "       photorec /version\n" \
       "\n" \
       "/log          : create a photorec.log file\n" \
       "/debug        : add debug information\n" \
+      "/maxsize SIZE : maximum file size to recover (e.g., 100M, 2G)\n" \
+      "/sig FILE     : custom signature file path\n" \
+      "/ses FILE     : custom session file path\n" \
+      "/nosess       : disable session file support (no resume capability)\n" \
+      "/logjson FILE : enable JSON logging to specified file\n" \
       "\n" \
       "PhotoRec searches for various file formats (JPEG, Office...). It stores files\n" \
       "in the recup_dir directory.\n");
@@ -190,6 +240,11 @@ int main( int argc, char **argv )
   params.cmd_run=NULL;
   params.carve_free_space_only=0;
   params.disk=NULL;
+  params.max_file_size=0; /* No size limit by default */
+  params.sig_file=NULL; /* Use default signature file locations */
+  params.session_file=NULL; /* Use default session file (photorec.ses) */
+  params.disable_session=0; /* Enable session support by default */
+  params.log_json_file=NULL; /* No JSON logging by default */
   /*@ assert valid_ph_param(&params); */
   /* random (weak is ok) is needed for GPT */
   srand(time(NULL)& (long)0xffffffff);
@@ -274,6 +329,38 @@ int main( int argc, char **argv )
       {
         params.recup_dir=strdup(argv[i+1]);
 	/*@ assert params.recup_dir==\null || \freeable(params.recup_dir); */
+      }
+      i++;
+    }
+    else if(i+1<argc && ((strcmp(argv[i],"/sig")==0)||(strcmp(argv[i],"-sig")==0)))
+    {
+      params.sig_file = strdup(argv[i+1]);
+      i++;
+    }
+    else if(i+1<argc && ((strcmp(argv[i],"/ses")==0)||(strcmp(argv[i],"-ses")==0)))
+    {
+      params.session_file = strdup(argv[i+1]);
+      i++;
+    }
+    else if((strcmp(argv[i],"/nosess")==0)||(strcmp(argv[i],"-nosess")==0))
+    {
+      params.disable_session = 1;
+    }
+    else if(i+1<argc && ((strcmp(argv[i],"/logjson")==0)||(strcmp(argv[i],"-logjson")==0)))
+    {
+      params.log_json_file = strdup(argv[i+1]);
+      i++;
+    }
+    else if(i+1<argc && ((strcmp(argv[i],"/maxsize")==0)||(strcmp(argv[i],"-maxsize")==0)))
+    {
+      params.max_file_size = parse_size_string(argv[i+1]);
+      if(params.max_file_size == 0)
+      {
+        printf("Invalid size format: %s\n", argv[i+1]);
+        printf("Use format like: 100M, 2G, 500K\n");
+        display_help();
+        free(params.recup_dir);
+        return 1;
       }
       i++;
     }
@@ -441,6 +528,43 @@ int main( int argc, char **argv )
 #endif
   reset_array_file_enable(options.list_file_format);
   file_options_load(options.list_file_format);
+
+  /* Set custom signature file if specified */
+  if(params.sig_file != NULL)
+  {
+    set_custom_signature_file(params.sig_file);
+  }
+
+  /* Set custom session file if specified */
+  if(params.session_file != NULL)
+  {
+    set_custom_session_file(params.session_file);
+  }
+
+  /* Initialize JSON logging if specified */
+  if(params.log_json_file != NULL)
+  {
+    if(json_log_open(params.log_json_file) == NULL)
+    {
+      return 1; /* Exit if JSON log file cannot be created */
+    }
+  }
+
+  /* Non-interactive mode - bypass all UI */
+  if(params.cmd_device == NULL)
+  {
+    printf("Error: No device specified. Use /cmd parameter for non-interactive mode.\n");
+    printf("Example: photorec /cmd /dev/sda1 search\n");
+    display_help();
+    return 1;
+  }
+
+  /* Force non-interactive CLI mode */
+  if(params.cmd_run == NULL)
+  {
+    params.cmd_run = "search"; /* Default to search if not specified */
+  }
+
 #ifdef SUDO_BIN
   if(list_disk==NULL && geteuid()!=0)
   {
@@ -493,5 +617,7 @@ int main( int argc, char **argv )
 #ifdef ENABLE_DFXML
   xml_clear_command_line();
 #endif
+  /* Close JSON log file if it was opened */
+  json_log_close(NULL);
   return 0;
 }

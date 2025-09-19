@@ -57,6 +57,11 @@ struct ph_param
   photorec_status_t status;
   time_t real_start_time;
   char *recup_dir;
+  uint64_t max_file_size;  /* Maximum file size to recover (0 = no limit) */
+  char *sig_file;          /* Custom signature file path (NULL = use default) */
+  char *session_file;      /* Custom session file path (NULL = use default) */
+  int disable_session;     /* Disable session file support (0 = enabled, 1 = disabled) */
+  char *log_json_file;     /* JSON log file path (NULL = no JSON logging) */
   /* */
   unsigned int dir_num;
   unsigned int file_nbr;

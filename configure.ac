@@ -453,7 +453,8 @@ AC_PROG_GCC_TRADITIONAL
 #AC_FUNC_MALLOC
 
 # Checks for libraries.
-if test "x$with_ncurses" != "xno"; then
+# Disable ncurses by default for no-ncurses version
+if test "x$with_ncurses" = "xyes"; then
   AC_CHECK_LIB(ncursesw, initscr, [ ncurses_lib="ncursesw" ])
  if test -z "${ncurses_lib}"; then
   AC_CHECK_LIB( ncurses, initscr, [ ncurses_lib="ncurses" ])

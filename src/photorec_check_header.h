@@ -216,6 +216,10 @@ inline static pstatus_t photorec_check_header(file_recovery_t *file_recovery, st
   /*@ assert valid_file_recovery(file_recovery); */
   return PSTATUS_OK;
 }
+
+/* Custom signature file functions */
+void set_custom_signature_file(const char *sig_file);
+
 #ifdef __cplusplus
 } /* closing brace for extern "C" */
 #endif

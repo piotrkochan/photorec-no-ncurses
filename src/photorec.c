@@ -672,12 +672,23 @@ static void file_finish_aux(file_recovery_t *file_recovery, struct ph_param *par
     file_recovery->file_size = params->disk->disk_real_size;
   if(file_recovery->file_stat!=NULL && file_recovery->file_size> 0 &&
       file_recovery->file_size < file_recovery->min_filesize)
-  { 
+  {
 #ifndef DISABLED_FOR_FRAMAC
     log_info("%s File too small ( %llu < %llu), reject it\n",
 	file_recovery->filename,
 	(long long unsigned) file_recovery->file_size,
 	(long long unsigned) file_recovery->min_filesize);
+#endif
+    file_recovery->file_size=0;
+  }
+  /* Check maximum file size limit from /maxsize parameter */
+  if(params->max_file_size > 0 && file_recovery->file_size > params->max_file_size)
+  {
+#ifndef DISABLED_FOR_FRAMAC
+    log_info("%s File too large ( %llu > %llu), reject it\n",
+	file_recovery->filename,
+	(long long unsigned) file_recovery->file_size,
+	(long long unsigned) params->max_file_size);
 #endif
     file_recovery->file_size=0;
   }

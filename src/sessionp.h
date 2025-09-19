@@ -34,7 +34,7 @@ extern "C" {
 // ensures  *cmd_device==\null  || valid_read_string(*cmd_device);
 // ensures  *current_cmd==\null || valid_read_string(*current_cmd);
 // ensures  valid_list_search_space(list_free_space);
-int session_load(char **cmd_device, char **current_cmd, alloc_data_t *list_free_space);
+int session_load(char **cmd_device, char **current_cmd, alloc_data_t *list_free_space, const struct ph_param *params);
 
 /*@
   @ requires \valid_read(list_free_space);
@@ -51,6 +51,9 @@ int session_save(const alloc_data_t *list_free_space, const struct ph_param *par
   @ requires options==\null || \valid_read(options);
   @*/
 time_t regular_session_save(alloc_data_t *list_free_space, struct ph_param *params,  const struct ph_options *options, time_t current_time);
+
+/* Custom session file functions */
+void set_custom_session_file(const char *session_file);
 
 #ifdef __cplusplus
 } /* closing brace for extern "C" */

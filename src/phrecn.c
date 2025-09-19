@@ -68,6 +68,7 @@
 #include "filegen.h"
 #include "photorec.h"
 #include "sessionp.h"
+#include "json_log.h"
 #include "phrecn.h"
 #include "log.h"
 #include "log_part.h"
@@ -305,6 +306,7 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
 #ifndef DISABLED_FOR_FRAMAC
     log_info("Pass %u (blocksize=%u) ", params->pass, params->blocksize);
     log_info("%s\n", status_to_name(params->status));
+    json_log_pass_info(params->pass, params->blocksize, status_to_name(params->status));
 #endif
 
 #ifdef HAVE_NCURSES
@@ -432,6 +434,18 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
           (unsigned)((current_time-params->real_start_time)/60/60),
           (unsigned)((current_time-params->real_start_time)/60%60),
           (unsigned)((current_time-params->real_start_time)%60));
+
+      /* Log JSON progress if enabled and we have a pass */
+      if(params->pass>0)
+      {
+        char elapsed_str[64];
+        const time_t elapsed = current_time - params->real_start_time;
+        snprintf(elapsed_str, sizeof(elapsed_str), "%uh%02um%02us",
+                (unsigned)(elapsed/3600),
+                (unsigned)((elapsed/60)%60),
+                (unsigned)(elapsed%60));
+        json_log_recovery_progress(params, 0, 0, elapsed_str, NULL, params->file_stats);
+      }
     }
     update_stats(params->file_stats, list_search_space);
     if(params->pass>0)
