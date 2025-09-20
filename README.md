@@ -30,7 +30,7 @@ A specialized distribution of PhotoRec 7.3-WIP engineered for headless environme
 # Build Instructions
 
 ```bash
-sudo apt install -y build-essential autotools-dev autoconf libtool pkg-config zlib1g-dev libext2fs-dev libntfs-3g-dev libjpeg-dev libewf-dev
+sudo apt install -y build-essential autotools-dev autoconf libtool pkg-config zlib1g-dev libext2fs-dev ntfs-3g-dev libjpeg-dev libewf-dev
 
 autoreconf -fiv
 
