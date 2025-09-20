@@ -251,6 +251,8 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
   };
   const int resume_session=(params->cmd_device!=NULL && strcmp(params->cmd_device,"resume")==0);
 
+  log_info("do_curses_photorec: cmd_device='%s', resume_session=%d\n",
+    params->cmd_device ? params->cmd_device : "NULL", resume_session);
 
   /* Log JSON session start if enabled */
   json_log_session_start(params, options);
@@ -260,10 +262,63 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
     char *saved_device=NULL;
     char *saved_cmd=NULL;
     session_load(&saved_device, &saved_cmd,&list_search_space, params);
+    log_info("session_load: saved_device='%s', saved_cmd='%s', list_empty=%d\n",
+      saved_device ? saved_device : "NULL", saved_cmd ? saved_cmd : "NULL", td_list_empty(&list_search_space.list));
     if(saved_device!=NULL && saved_cmd!=NULL && !td_list_empty(&list_search_space.list) && resume_session!=0)
     {
-      params->cmd_run=saved_cmd;
-      params->cmd_device=saved_device;
+      /* For resume, extract file options from saved session command */
+      char *cli_cmd = NULL;
+      char *fileopt_start = strstr(saved_cmd, "fileopt,");
+      char *options_start = strstr(saved_cmd, ",options,");
+
+      /* Try direct resume with search command */
+      params->cmd_device=NULL;  /* Don't use CLI mode for device selection */
+      params->cmd_run=strdup("search");  /* Simple search command - session contains the ranges */
+
+      /* Log available disks */
+      log_info("Resume: Looking for disk '%s' in available disks:\n", saved_device);
+      {
+        const list_disk_t *disk_walker;
+        int disk_count = 0;
+        for(disk_walker = list_disk; disk_walker != NULL; disk_walker = disk_walker->next) {
+          log_info("Resume: Available disk %d: '%s'\n", disk_count++, disk_walker->disk->device);
+        }
+      }
+
+      params->disk=photorec_disk_selection_cli(saved_device, list_disk, &list_search_space);
+      if(params->disk != NULL) {
+        log_info("Resume: Found disk %s\n", params->disk->device);
+        log_info("Resume: Search space has %s entries\n", td_list_empty(&list_search_space.list) ? "no" : "some");
+        /* Log first few search space ranges */
+        {
+          struct td_list_head *search_walker = NULL;
+          int range_count = 0;
+          td_list_for_each(search_walker, &list_search_space.list) {
+            alloc_data_t *range = td_list_entry(search_walker, alloc_data_t, list);
+            log_info("Resume: Range %d: %llu-%llu (sectors: %llu-%llu)\n", range_count++,
+              (unsigned long long)range->start, (unsigned long long)range->end,
+              (unsigned long long)(range->start / params->disk->sector_size),
+              (unsigned long long)(range->end / params->disk->sector_size));
+            if(range_count >= 5) break;  /* Just show first 5 ranges */
+          }
+        }
+        /* Set up basic parameters for recovery */
+        autoset_unit(params->disk);
+        /* TODO: Apply saved file options from session */
+        /* Start recovery directly */
+        log_info("Resume: Starting menu_photorec with %d search ranges\n",
+          td_list_empty(&list_search_space.list) ? 0 : 1);
+        menu_photorec(params, options, &list_search_space);
+        log_info("Resume: Recovery completed\n");
+        free(params->cmd_run);
+        params->cmd_run=NULL;
+      } else {
+        log_info("Resume: No disk found\n");
+        log_critical("Resume failed: Disk '%s' not found in available disks.\n", saved_device);
+        log_critical("To resume, run: photorec %s /cmd resume\n", saved_device);
+      }
+      free(saved_device);
+      free(saved_cmd);
     }
     else
     {

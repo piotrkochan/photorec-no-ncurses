@@ -407,7 +407,7 @@ int main( int argc, char **argv )
 #endif
     if(strcmp(argv[i],"/cmd")==0)
     {
-      if(i+2>=argc)
+      if(i+1>=argc)
       {
 	display_help();
 	free(params.recup_dir);
@@ -420,6 +420,13 @@ int main( int argc, char **argv )
       }
       else
 #endif
+      if(i+2>=argc)
+      {
+	display_help();
+	free(params.recup_dir);
+	return 1;
+      }
+      else
       {
         disk_t *disk_car;
         params.cmd_device=argv[++i];
