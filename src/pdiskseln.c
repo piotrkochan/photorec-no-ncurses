@@ -289,6 +289,7 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
       if(params->disk != NULL) {
         log_info("Resume: Found disk %s\n", params->disk->device);
         log_info("Resume: Search space has %s entries\n", td_list_empty(&list_search_space.list) ? "no" : "some");
+        log_info("Resume: file_stats=%p\n", params->file_stats);
         /* Log first few search space ranges */
         {
           struct td_list_head *search_walker = NULL;
