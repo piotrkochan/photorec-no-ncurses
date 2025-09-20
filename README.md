@@ -25,20 +25,19 @@ A specialized distribution of PhotoRec 7.3-WIP engineered for headless environme
 
 ## File Size Filtering Enhancement
 - Implemented configurable maximum file size constraints via `/maxsize` parameter
+- Added in-flight file size checking for early termination during recovery process instead of waiting for complete file reconstruction
 
-# 🔧 Build Instructions
+# Build Instructions
 
 ```bash
-# Regenerate autotools configuration
+sudo apt install -y build-essential autotools-dev autoconf libtool pkg-config zlib1g-dev libext2fs-dev libntfs-3g-dev libjpeg-dev libewf-dev
+
 autoreconf -fiv
 
-# Configure without ncurses
 ./configure --without-ncurses --enable-silent-rules
 
-# Compile with parallel jobs
 make -j10
 
-# Verify no ncurses dependency
 ldd src/photorec | grep ncurses  # Should return empty
 ```
 
@@ -70,7 +69,9 @@ The `/maxsize` parameter supports the following suffixes:
 
 The modified PhotoRec outputs structured JSON logs with the following message types:
 
-### Session Start
+<details>
+<summary><strong>Session Start</strong></summary>
+
 ```json
 {
   "type": "session_start",
@@ -82,8 +83,11 @@ The modified PhotoRec outputs structured JSON logs with the following message ty
   "keep_corrupted_files": false
 }
 ```
+</details>
 
-### Recovery Progress
+<details>
+<summary><strong>Recovery Progress</strong></summary>
+
 ```json
 {
   "type": "recovery_progress",
@@ -102,8 +106,11 @@ The modified PhotoRec outputs structured JSON logs with the following message ty
   }
 }
 ```
+</details>
 
-### File Recovered
+<details>
+<summary><strong>File Recovered</strong></summary>
+
 ```json
 {
   "type": "file_recovered",
@@ -114,6 +121,94 @@ The modified PhotoRec outputs structured JSON logs with the following message ty
   "disk_offset": 123456789
 }
 ```
+</details>
+
+<details>
+<summary><strong>Partition Info</strong></summary>
+
+```json
+{
+  "type": "partition_info",
+  "timestamp": "2025-09-19T10:30:01Z",
+  "disk": "/dev/sda1",
+  "size_gb": 465.8
+}
+```
+</details>
+
+<details>
+<summary><strong>Disk Info</strong></summary>
+
+```json
+{
+  "type": "disk_info",
+  "timestamp": "2025-09-19T10:30:01Z",
+  "device": "/dev/sda",
+  "size_gb": 465.8,
+  "sector_size": 512
+}
+```
+</details>
+
+<details>
+<summary><strong>Options Info</strong></summary>
+
+```json
+{
+  "type": "options_info",
+  "timestamp": "2025-09-19T10:30:01Z",
+  "paranoid": true,
+  "brute_force": false,
+  "keep_corrupted": false,
+  "ext2_mode": false,
+  "expert_mode": false,
+  "low_memory": false
+}
+```
+</details>
+
+<details>
+<summary><strong>Signatures Info</strong></summary>
+
+```json
+{
+  "type": "signatures_info",
+  "timestamp": "2025-09-19T10:30:01Z",
+  "enabled_signatures": 487
+}
+```
+</details>
+
+<details>
+<summary><strong>Pass Info</strong></summary>
+
+```json
+{
+  "type": "pass_info",
+  "timestamp": "2025-09-19T10:30:02Z",
+  "pass": 1,
+  "blocksize": 512
+}
+```
+</details>
+
+<details>
+<summary><strong>Session End</strong></summary>
+
+```json
+{
+  "type": "session_end",
+  "timestamp": "2025-09-19T10:35:00Z",
+  "final_statistics": {
+    "total_files": 1205,
+    "txt": 875,
+    "jpg": 156,
+    "png": 98,
+    "pdf": 76
+  }
+}
+```
+</details>
 
 ## Important Notes
 
@@ -162,3 +257,12 @@ TestDisk and PhotoRec run on:
 - SunOS
 
 Both are licensed under the GNU General Public License.
+
+See the [latest documentation](https://github.com/cgsecurity/testdisk_documentation)
+To build from source, read [INSTALL](INSTALL).
+
+Christophe GRENIER
+[grenier@cgsecurity.org](mailto:grenier@cgsecurity.org)
+[https://www.cgsecurity.org/](https://www.cgsecurity.org/)
+
+[![Build Status](https://travis-ci.org/cgsecurity/testdisk.svg?branch=master)](https://travis-ci.org/cgsecurity/testdisk)
